@@ -6,7 +6,8 @@ import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
 			{ path: 'login', component: LoginComponent, data: { renderMode: 'client' } },
-			{ path: 'times', component: RaceTimesListComponent, canActivate: [authGuard], data: { renderMode: 'client' } },
+				// Listado público (sin iniciar sesión)
+				{ path: 'times', component: RaceTimesListComponent, data: { renderMode: 'client' } },
 			{ path: 'times/new', component: RaceTimeFormComponent, canActivate: [authGuard], data: { renderMode: 'client' } },
 			{ path: 'times/:id/edit', component: RaceTimeFormComponent, canActivate: [authGuard], data: { renderMode: 'client' } },
 			{ path: '', pathMatch: 'full', redirectTo: 'times', data: { renderMode: 'client' } },
