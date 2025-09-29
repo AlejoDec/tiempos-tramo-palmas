@@ -100,6 +100,23 @@ const angularApp = new AngularNodeAppEngine();
 
 app.use(express.json({ limit: '1mb' }));
 
+// --- API: Health check ---
+app.get('/api/health', async (_req: Request, res: Response) => {
+  try {
+    const r = await ensureRedisReady();
+    // Intento rápido de lectura (no muta)
+    await r.get('health:ping:test');
+    res.json({
+      ok: true,
+      redis: redisFailed ? 'memory-fallback' : 'connected',
+      mode: redisFailed ? 'MEMORY' : (process.env['REDIS_URL'] ? 'REDIS_URL' : (process.env['REDIS_HOST'] ? 'HOST_PORT' : 'MEMORY')),
+      keySample: KEY_RACE_TIMES
+    });
+  } catch (e: any) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // --- API: List race times ---
 app.get('/api/race-times', async (_req: Request, res: Response) => {
   const list = await loadRaceTimes();
