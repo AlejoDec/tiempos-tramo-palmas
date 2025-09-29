@@ -7,31 +7,49 @@ import {
 import express from 'express';
 import type { Request, Response } from 'express';
 import { join } from 'node:path';
-import { Redis } from '@upstash/redis';
+import { createClient } from 'redis';
 
-// --- Edge Store (Upstash Redis) Setup ---
-// Expect environment variables: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
-// Fallback: creates a mock in-memory store (not for production)
-let redis: Redis | { hgetall: (key: string) => Promise<any>; hset: (key: string, data: Record<string, unknown>) => Promise<void>; del: (key:string)=>Promise<void>; get: (k:string)=>Promise<any>; set:(k:string,v:any)=>Promise<void>; scan:(cursor:number)=>Promise<[number,string[]]> };
-if (process.env['UPSTASH_REDIS_REST_URL'] && process.env['UPSTASH_REDIS_REST_TOKEN']) {
-  redis = new Redis({
-    url: process.env['UPSTASH_REDIS_REST_URL']!,
-    token: process.env['UPSTASH_REDIS_REST_TOKEN']!,
-  });
-  console.log('[EdgeStore] Upstash Redis inicializado');
-} else {
-  console.warn('[EdgeStore] Variables de entorno de Upstash no definidas. Usando mock en memoria (SOLO DESARROLLO).');
-  const mem = new Map<string, any>();
+// --- Redis (node-redis) Setup ---
+// Variables soportadas (usa las que tengas disponibles):
+//   REDIS_URL            -> URL completa (incluye esquema rediss:// )
+//   REDIS_HOST + REDIS_PORT + REDIS_PASSWORD
+//   UPSTASH_REDIS_REST_URL / TOKEN (no se usan con node-redis puro, pero las dejamos por si quieres revertir)
+// Si no hay credenciales definidas, se usa un mock en memoria SOLO para desarrollo.
+
+type RedisLike = { get(key:string):Promise<string|null>; set(key:string,val:string):Promise<any>; del(key:string):Promise<any>; }; 
+let redis: RedisLike;
+
+async function initRedis() {
+  const url = process.env['REDIS_URL'];
+  const host = process.env['REDIS_HOST'];
+  const port = process.env['REDIS_PORT'];
+  const password = process.env['REDIS_PASSWORD'];
+
+  if (url) {
+    const client = createClient({ url, socket: { reconnectStrategy: (retries) => Math.min(retries * 50, 500) } });
+    client.on('error', err => console.error('[Redis] Error', err));
+    await client.connect();
+    console.log('[Redis] Conectado via REDIS_URL');
+    redis = client as unknown as RedisLike;
+    return;
+  }
+  if (host && port) {
+    const client = createClient({
+      socket: { host, port: Number(port), reconnectStrategy: (retries) => Math.min(retries * 50, 500) },
+      password: password
+    });
+    client.on('error', err => console.error('[Redis] Error', err));
+    await client.connect();
+    console.log('[Redis] Conectado via host/port');
+    redis = client as unknown as RedisLike;
+    return;
+  }
+  console.warn('[Redis] Variables no definidas (REDIS_URL o REDIS_HOST/PORT). Usando mock en memoria.');
+  const mem = new Map<string,string>();
   redis = {
-    async hgetall(key: string) { return mem.get(key) || {}; },
-    async hset(key: string, data: Record<string, unknown>) {
-      const current = mem.get(key) || {};
-      mem.set(key, { ...current, ...data });
-    },
-    async del(key: string) { mem.delete(key); },
-    async get(k: string) { return mem.get(k); },
-    async set(k: string, v: any) { mem.set(k, v); },
-    async scan(cursor: number) { return [0, Array.from(mem.keys())]; },
+    async get(k:string){ return mem.has(k) ? mem.get(k)! : null; },
+    async set(k:string,v:string){ mem.set(k,v); },
+    async del(k:string){ mem.delete(k); }
   };
 }
 
@@ -40,13 +58,13 @@ const KEY_RACE_TIMES = 'app.race.times';
 interface RaceTime { id: string; corredor: string; carro: string; marca?: string; tiempoSegundos: number; tramo: string; fecha?: string; nota?: string; }
 
 async function loadRaceTimes(): Promise<RaceTime[]> {
-  const raw = await (redis as any).get(KEY_RACE_TIMES);
+  const raw = await redis.get(KEY_RACE_TIMES);
   if (!raw) return [];
   try { return JSON.parse(raw) as RaceTime[]; } catch { return []; }
 }
 
 async function saveRaceTimes(list: RaceTime[]): Promise<void> {
-  await (redis as any).set(KEY_RACE_TIMES, JSON.stringify(list));
+  await redis.set(KEY_RACE_TIMES, JSON.stringify(list));
 }
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
@@ -157,12 +175,14 @@ app.use((req, res, next) => {
  */
 if (isMainModule(import.meta.url)) {
   const port = process.env['PORT'] || 4000;
-  app.listen(port, (error) => {
-    if (error) {
-      throw error;
-    }
-
-    console.log(`Node Express server listening on http://localhost:${port}`);
+  initRedis().then(() => {
+    app.listen(port, (error) => {
+      if (error) { throw error; }
+      console.log(`Node Express server listening on http://localhost:${port}`);
+    });
+  }).catch(err => {
+    console.error('[Redis] No se pudo inicializar', err);
+    process.exit(1);
   });
 }
 

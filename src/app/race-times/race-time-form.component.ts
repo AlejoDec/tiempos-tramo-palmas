@@ -1,14 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { RaceTimesService } from './race-times.service';
 import { RaceTime } from './race-time.model';
 
 @Component({
   selector: 'app-race-time-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
   <div class="form-wrapper">
     <h2>{{ isEdit() ? 'Editar' : 'Nuevo' }} Tiempo</h2>
