@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -21,10 +21,10 @@ import { AuthService } from '../auth/auth.service';
     </ng-template>
   </div>
   <div class="filters">
-    <input placeholder="Filtrar marca" [(ngModel)]="fMarca" />
-    <input placeholder="Filtrar corredor" [(ngModel)]="fCorredor" />
-    <input placeholder="Filtrar modelo" [(ngModel)]="fModelo" />
-    <button (click)="limpiarFiltros()" type="button">Limpiar</button>
+    <input placeholder="Filtrar (marca / corredor / modelo)" [(ngModel)]="filterInput" (keyup.enter)="aplicarFiltro()" />
+    <button type="button" (click)="aplicarFiltro()">Aplicar</button>
+    <button type="button" (click)="limpiarFiltro()" [disabled]="!appliedFilter() && !filterInput">Limpiar</button>
+    <span class="badge" *ngIf="appliedFilter()">Filtro activo: "{{ appliedFilter() }}"</span>
   </div>
   <table *ngIf="filtered().length; else empty">
     <thead>
@@ -74,17 +74,15 @@ export class RaceTimesListComponent {
   private svc = inject(RaceTimesService);
   private auth = inject(AuthService);
   items = computed(() => this.svc.items());
-  fMarca = '';
-  fCorredor = '';
-  fModelo = '';
+  filterInput = '';
+  appliedFilter = signal('');
   filtered = computed(() => {
-    const marca = this.fMarca.trim().toLowerCase();
-    const corredor = this.fCorredor.trim().toLowerCase();
-    const modelo = this.fModelo.trim().toLowerCase();
+    const f = this.appliedFilter().trim().toLowerCase();
     return this.items()
-      .filter(t => !marca || (t.marca||'').toLowerCase().includes(marca))
-      .filter(t => !corredor || t.corredor.toLowerCase().includes(corredor))
-      .filter(t => !modelo || t.carro.toLowerCase().includes(modelo))
+      .filter(t => !f ||
+        (t.marca||'').toLowerCase().includes(f) ||
+        t.corredor.toLowerCase().includes(f) ||
+        t.carro.toLowerCase().includes(f))
       .sort((a,b) => (a.marca||'').localeCompare(b.marca||''));
   });
   loggedIn = computed(() => this.auth.loggedIn());
@@ -95,8 +93,13 @@ export class RaceTimesListComponent {
 
   logout() { this.auth.logout(); }
 
-  limpiarFiltros() {
-    this.fMarca = this.fCorredor = this.fModelo = '';
+  aplicarFiltro() {
+    this.appliedFilter.set(this.filterInput);
+  }
+
+  limpiarFiltro() {
+    this.filterInput = '';
+    this.appliedFilter.set('');
   }
 
   formatTiempo(seg: number) { return this.svc.formatTiempo(seg); }
