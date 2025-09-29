@@ -32,25 +32,11 @@ function createMemoryRedis(): RedisLike {
 
 async function initRedis() {
   const url = process.env['REDIS_URL'];
-  const host = process.env['REDIS_HOST'];
-  const port = process.env['REDIS_PORT'];
-  const password = process.env['REDIS_PASSWORD'];
-
   if (url) {
     const client = createClient({ url, socket: { reconnectStrategy: (retries) => Math.min(retries * 50, 500) } });
     client.on('error', err => console.error('[Redis] Error', err));
     await client.connect();
     console.log('[Redis] Conectado via REDIS_URL');
-    redis = client as unknown as RedisLike; redisInitialized = true; return;
-  }
-  if (host && port) {
-    const client = createClient({
-      socket: { host, port: Number(port), reconnectStrategy: (retries) => Math.min(retries * 50, 500) },
-      password: password
-    });
-    client.on('error', err => console.error('[Redis] Error', err));
-    await client.connect();
-    console.log('[Redis] Conectado via host/port');
     redis = client as unknown as RedisLike; redisInitialized = true; return;
   }
   console.warn('[Redis] Variables no definidas (REDIS_URL o REDIS_HOST/PORT). Usando mock en memoria.');

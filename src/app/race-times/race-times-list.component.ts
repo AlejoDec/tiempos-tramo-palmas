@@ -92,8 +92,19 @@ export class RaceTimesListComponent implements OnInit {
   });
   loggedIn = computed(() => this.auth.loggedIn());
 
-  remove(id: string) {
-    if (confirm('¿Eliminar registro?')) this.svc.remove(id);
+  deleting = new Set<string>();
+
+  async remove(id: string) {
+    if (!confirm('¿Eliminar registro?')) return;
+    if (this.deleting.has(id)) return;
+    this.deleting.add(id);
+    try {
+      await this.svc.remove(id); // El servicio hace DELETE /api/race-times/:id
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo eliminar');
+    } finally {
+      this.deleting.delete(id);
+    }
   }
 
   logout() { this.auth.logout(); }
