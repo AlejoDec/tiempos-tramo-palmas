@@ -17,7 +17,18 @@ import { createClient } from 'redis';
 // Si no hay credenciales definidas, se usa un mock en memoria SOLO para desarrollo.
 
 type RedisLike = { get(key:string):Promise<string|null>; set(key:string,val:string):Promise<any>; del(key:string):Promise<any>; }; 
-let redis: RedisLike;
+let redis: RedisLike | undefined;
+let redisInitialized = false;
+let redisFailed = false;
+
+function createMemoryRedis(): RedisLike {
+  const mem = new Map<string,string>();
+  return {
+    async get(k:string){ return mem.has(k) ? mem.get(k)! : null; },
+    async set(k:string,v:string){ mem.set(k,v); },
+    async del(k:string){ mem.delete(k); }
+  };
+}
 
 async function initRedis() {
   const url = process.env['REDIS_URL'];
@@ -30,8 +41,7 @@ async function initRedis() {
     client.on('error', err => console.error('[Redis] Error', err));
     await client.connect();
     console.log('[Redis] Conectado via REDIS_URL');
-    redis = client as unknown as RedisLike;
-    return;
+    redis = client as unknown as RedisLike; redisInitialized = true; return;
   }
   if (host && port) {
     const client = createClient({
@@ -41,16 +51,30 @@ async function initRedis() {
     client.on('error', err => console.error('[Redis] Error', err));
     await client.connect();
     console.log('[Redis] Conectado via host/port');
-    redis = client as unknown as RedisLike;
-    return;
+    redis = client as unknown as RedisLike; redisInitialized = true; return;
   }
   console.warn('[Redis] Variables no definidas (REDIS_URL o REDIS_HOST/PORT). Usando mock en memoria.');
-  const mem = new Map<string,string>();
-  redis = {
-    async get(k:string){ return mem.has(k) ? mem.get(k)! : null; },
-    async set(k:string,v:string){ mem.set(k,v); },
-    async del(k:string){ mem.delete(k); }
-  };
+  redis = createMemoryRedis();
+  redisInitialized = true;
+}
+
+const redisInitPromise = initRedis().catch(err => {
+  console.error('[Redis] Falló inicialización, usando memoria.', err);
+  redisFailed = true;
+  redis = createMemoryRedis();
+  redisInitialized = true;
+});
+
+async function ensureRedisReady() {
+  if (!redisInitialized) {
+    await redisInitPromise;
+  }
+  if (!redis) {
+    // último recurso
+    redis = createMemoryRedis();
+    redisInitialized = true;
+  }
+  return redis;
 }
 
 // Keys & helpers
@@ -58,13 +82,15 @@ const KEY_RACE_TIMES = 'app.race.times';
 interface RaceTime { id: string; corredor: string; carro: string; marca?: string; tiempoSegundos: number; tramo: string; fecha?: string; nota?: string; }
 
 async function loadRaceTimes(): Promise<RaceTime[]> {
-  const raw = await redis.get(KEY_RACE_TIMES);
+  const r = await ensureRedisReady();
+  const raw = await r.get(KEY_RACE_TIMES);
   if (!raw) return [];
   try { return JSON.parse(raw) as RaceTime[]; } catch { return []; }
 }
 
 async function saveRaceTimes(list: RaceTime[]): Promise<void> {
-  await redis.set(KEY_RACE_TIMES, JSON.stringify(list));
+  const r = await ensureRedisReady();
+  await r.set(KEY_RACE_TIMES, JSON.stringify(list));
 }
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
@@ -175,14 +201,14 @@ app.use((req, res, next) => {
  */
 if (isMainModule(import.meta.url)) {
   const port = process.env['PORT'] || 4000;
-  initRedis().then(() => {
+  redisInitPromise.finally(() => {
     app.listen(port, (error) => {
       if (error) { throw error; }
       console.log(`Node Express server listening on http://localhost:${port}`);
+      if (redisFailed) {
+        console.warn('[Redis] Servidor iniciado con fallback en memoria. Los datos no persistirán.');
+      }
     });
-  }).catch(err => {
-    console.error('[Redis] No se pudo inicializar', err);
-    process.exit(1);
   });
 }
 
