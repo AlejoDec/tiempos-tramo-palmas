@@ -60,7 +60,7 @@ export class RaceTimesService {
     this._items.update(arr => arr.filter(i => i.id !== id));
     try {
       const res = await fetch(`${this.serverBase}/race-times/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('HTTP '+res.status);
+      if (!res.ok && res.status !== 404) throw new Error('HTTP '+res.status);
     } catch {
       this._items.set(before); // rollback
       throw new Error('No se pudo eliminar en el servidor');

@@ -19,8 +19,10 @@ export default async function handler(req, res) {
     const redis = await getRedis();
     const raw = await redis.get(KEY);
     const list = raw ? JSON.parse(raw) : [];
-    const idx = list.findIndex(r => r.id === id);
-    if (idx === -1) { res.status(404).json({ message: 'No encontrado' }); return; }
+  const idx = list.findIndex(r => r.id === id);
+  // Para DELETE hacemos la operación idempotente: si no existe, respondemos 200 igualmente
+  // Para PUT seguimos exigiendo que exista
+  if (req.method !== 'DELETE' && idx === -1) { res.status(404).json({ message: 'No encontrado' }); return; }
 
     if (req.method === 'PUT') {
       const body = req.body || {};
@@ -30,11 +32,14 @@ export default async function handler(req, res) {
       return;
     }
     if (req.method === 'DELETE') {
-      const filtered = list.filter(r => r.id !== id);
-      await redis.set(KEY, JSON.stringify(filtered));
-      res.status(200).json({ message: 'Eliminado' });
-      return;
-    }
+      if (idx !== -1) {
+        const filtered = list.filter(r => r.id !== id);
+        await redis.set(KEY, JSON.stringify(filtered));
+        res.status(200).json({ message: 'Eliminado' });
+      } else {
+        res.status(200).json({ message: 'Ya no existía (idempotente)' });
+      }
+      return;    }
     res.setHeader('Allow', 'PUT,DELETE');
     res.status(405).json({ message: 'Método no permitido' });
   } catch (e) {
