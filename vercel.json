@@ -3,6 +3,7 @@
   "outputDirectory": "dist/mi-app-angular/browser",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/(.*)", "destination": "/index.html" },
+    { "source": "/times", "destination": "/index.html" }
   ]
 }
