@@ -1,3 +1,7 @@
+packages:
+  - '.'
+
+# Dependencias opcionales ignoradas en la construcción (optimiza instalaciones en Windows)
 ignoredBuiltDependencies:
   - '@parcel/watcher'
   - esbuild
