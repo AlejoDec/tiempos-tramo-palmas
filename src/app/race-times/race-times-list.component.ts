@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -74,7 +74,7 @@ import { AuthService } from '../auth/auth.service';
     button { cursor:pointer; }
   `]
 })
-export class RaceTimesListComponent {
+export class RaceTimesListComponent implements OnInit {
   private svc = inject(RaceTimesService);
   private auth = inject(AuthService);
   private backup = inject(BackupService);
@@ -111,4 +111,9 @@ export class RaceTimesListComponent {
 
   exportar() { this.backup.downloadJson(); }
   subir() { this.backup.uploadToServer(); }
+
+  ngOnInit() {
+    // Sincroniza con el backend (Redis) al cargar la vista
+    this.svc.syncFromServerOnce();
+  }
 }
