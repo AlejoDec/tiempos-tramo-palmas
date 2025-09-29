@@ -11,10 +11,13 @@ import { AuthService } from '../auth/auth.service';
   template: `
   <div class="toolbar">
     <h2>Tiempos de Carrera</h2>
-    <div class="actions">
+    <div class="actions" *ngIf="loggedIn(); else readOnlyBadge">
       <a routerLink="/times/new">➕ Nuevo</a>
       <button (click)="logout()">Salir</button>
     </div>
+    <ng-template #readOnlyBadge>
+      <span class="readonly">Solo lectura (inicia sesión para editar)</span>
+    </ng-template>
   </div>
   <table *ngIf="items().length; else empty">
     <thead>
@@ -24,7 +27,7 @@ import { AuthService } from '../auth/auth.service';
         <th>Tiempo (s)</th>
         <th>Tramo</th>
         <th>Fecha</th>
-        <th></th>
+        <th *ngIf="loggedIn()">Acciones</th>
       </tr>
     </thead>
     <tbody>
@@ -35,7 +38,7 @@ import { AuthService } from '../auth/auth.service';
             <td>{{ t.tiempoSegundos }}</td>
             <td>{{ t.tramo }}</td>
             <td>{{ t.fecha | date:'short' }}</td>
-            <td>
+            <td *ngIf="loggedIn()">
               <a [routerLink]="['/times', t.id, 'edit']">Editar</a>
               <button (click)="remove(t.id)">Eliminar</button>
             </td>
@@ -44,7 +47,9 @@ import { AuthService } from '../auth/auth.service';
     </tbody>
   </table>
   <ng-template #empty>
-    <p>No hay registros. <a routerLink="/times/new">Crea el primero</a>.</p>
+    <p>No hay registros. <span *ngIf="loggedIn(); else needLogin"> <a routerLink="/times/new">Crea el primero</a>.</span>
+      <ng-template #needLogin>Inicia sesión para agregar uno.</ng-template>
+    </p>
   </ng-template>
   `,
   styles: [`
@@ -60,6 +65,7 @@ export class RaceTimesListComponent {
   private svc = inject(RaceTimesService);
   private auth = inject(AuthService);
   items = computed(() => this.svc.items());
+  loggedIn = computed(() => this.auth.loggedIn());
 
   remove(id: string) {
     if (confirm('¿Eliminar registro?')) this.svc.remove(id);
