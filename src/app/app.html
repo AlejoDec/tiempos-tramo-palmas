@@ -8,9 +8,9 @@
 <!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * -->
 
 <header
-  style="padding:0.5rem 1rem;background:#222;color:#fff;display:flex;justify-content:space-between;align-items:center;"
+  style="padding:0.5rem 1rem;background:#222;color:#fff;display:flex;justify-content:space-between;align-items:center;border-radius:12px;"
 >
-  <h1 style="margin:0;font-size:1.1rem;">Tiempos de Carrera</h1>
+  <h1 style="margin:0;font-size:1.1rem;">Tiempos de tramos de Palmas - Medellin</h1>
   <nav style="display:flex;gap:1rem;align-items:center;">
     <a routerLink="/times" style="color:#fff;">Listado</a>
     <a routerLink="/times/new" style="color:#fff;" *ngIf="loggedIn()">Nuevo</a>
@@ -18,7 +18,7 @@
     <button (click)="goLogin()" *ngIf="!loggedIn()" style="background:#1976d2;color:#fff;border:0;padding:0.4rem 0.8rem;cursor:pointer;">Login</button>
   </nav>
 </header>
-<main style="padding:1rem;">
+<main style="padding:1rem;max-height:calc(90vh - 60px); overflow-y:auto;">
   <router-outlet />
 </main>
 

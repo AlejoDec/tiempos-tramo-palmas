@@ -22,7 +22,7 @@ import { RaceTime } from './race-time.model';
         <input name="carro" required [(ngModel)]="model.carro" />
       </div>
       <div class="row">
-        <label>Marca</label>
+        <label>Marca de carro</label>
         <input name="marca" required [(ngModel)]="model.marca" />
       </div>
       <div class="row">
@@ -34,8 +34,8 @@ import { RaceTime } from './race-time.model';
         <input name="tramo" required [(ngModel)]="model.tramo" />
       </div>
       <div class="row">
-        <label>Fecha</label>
-        <input name="fecha" type="datetime-local" required [(ngModel)]="model.fechaLocal" />
+        <label>Nota</label>
+        <textarea name="nota" [(ngModel)]="model.nota"></textarea>
       </div>
       <div class="actions">
         <button type="submit" [disabled]="f.invalid">Guardar</button>
@@ -46,11 +46,11 @@ import { RaceTime } from './race-time.model';
   `,
   styles: [`
     .form-wrapper { max-width:480px; margin:1rem auto; padding:1.5rem; border:1px solid #ccc; border-radius:8px; }
-    form { display:flex; flex-direction:column; gap:0.75rem; }
+    form { display:flex; flex-direction:column; gap:1rem; }
     .row { display:flex; flex-direction:column; }
     label { font-weight:600; margin-bottom:0.25rem; }
     input { padding:0.5rem; }
-    .actions { display:flex; gap:0.75rem; }
+    .actions { display:flex; gap:1rem; }
     button { cursor:pointer; }
   `]
 })
@@ -68,7 +68,7 @@ export class RaceTimeFormComponent {
     marca: '',
     tiempoSegundos: 0,
     tramo: '',
-    fechaLocal: ''
+    nota: ''
   };
 
   constructor() {
@@ -85,7 +85,7 @@ export class RaceTimeFormComponent {
             marca: item.marca || '',
             tiempoSegundos: item.tiempoSegundos,
             tramo: item.tramo,
-            fechaLocal: this.toLocalInput(item.fecha)
+            nota: item.nota || ''
           };
         }
       }
@@ -111,7 +111,7 @@ export class RaceTimeFormComponent {
       marca: this.model.marca || '',
       tiempoSegundos: Number(this.model.tiempoSegundos),
       tramo: this.model.tramo,
-      fecha: this.toIso(this.model.fechaLocal)
+      nota: this.model.nota || ''
     };
     if (this.isEdit() && this.id) {
       this.svc.update(this.id, data);

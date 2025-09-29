@@ -12,7 +12,8 @@ import { AuthService } from '../auth/auth.service';
   imports: [CommonModule, RouterLink, FormsModule],
   template: `
   <div class="toolbar">
-    <h2>Tiempos de Carrera</h2>
+    <h2>Tiempos de Carrera de Palmas - Medellin</h2>
+    <p>Made by <a href="http://byttes.com" target="_blank" rel="noopener noreferrer">Byttes</a></p>
     <div class="actions" *ngIf="loggedIn(); else readOnlyBadge">
       <a routerLink="/times/new">➕ Nuevo</a>
       <button (click)="logout()">Salir</button>

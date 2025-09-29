@@ -5,5 +5,5 @@ export interface RaceTime {
   marca?: string; // nueva propiedad (puede faltar en registros antiguos)
   tiempoSegundos: number; // tiempo total en segundos
   tramo: string;
-  fecha: string; // ISO string
+  nota: string;
 }
