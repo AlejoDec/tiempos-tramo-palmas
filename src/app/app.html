@@ -15,7 +15,7 @@
     <a routerLink="/times" style="color:#fff;">Listado</a>
     <a routerLink="/times/new" style="color:#fff;" *ngIf="loggedIn()">Nuevo</a>
     <button (click)="logout()" *ngIf="loggedIn()" style="background:#444;color:#fff;border:0;padding:0.4rem 0.8rem;cursor:pointer;">Salir</button>
-    <a routerLink="/login" style="color:#fff;" *ngIf="!loggedIn()">Login</a>
+    <button (click)="goLogin()" *ngIf="!loggedIn()" style="background:#1976d2;color:#fff;border:0;padding:0.4rem 0.8rem;cursor:pointer;">Login</button>
   </nav>
 </header>
 <main style="padding:1rem;">
