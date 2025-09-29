@@ -13,48 +13,58 @@ function simpleUUID(): string {
 
 @Injectable({ providedIn: 'root' })
 export class RaceTimesService {
-  private storageKey = 'app.race.times';
-  private _items = signal<RaceTime[]>(this.load());
+  private _items = signal<RaceTime[]>([]);
   readonly items = this._items.asReadonly();
   private syncing = false;
   private serverBase = '/api';
-
-  private load(): RaceTime[] {
-    try {
-      const raw = localStorage.getItem(this.storageKey);
-      if (!raw) return [];
-      return JSON.parse(raw) as RaceTime[];
-    } catch {
-      return [];
-    }
-  }
-
-  private persist() {
-    localStorage.setItem(this.storageKey, JSON.stringify(this._items()));
-  }
 
   list() { return this.items(); }
 
   get(id: string) { return this._items().find(i => i.id === id); }
 
-  add(data: Omit<RaceTime, 'id'>) {
+  async add(data: Omit<RaceTime, 'id'>) {
     const item: RaceTime = { id: simpleUUID(), ...data };
-    this._items.update((arr: RaceTime[]) => [...arr, item]);
-    this.persist();
-    this.pushToServer('POST', item).catch(()=>{});
-    return item;
+    // Optimistic update
+    this._items.update(arr => [...arr, item]);
+    try {
+      const res = await fetch(`${this.serverBase}/race-times`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
+      if (res.ok) {
+        const saved = await res.json() as RaceTime;
+        // Replace temp item with server item (in case server generated id or modified)
+        this._items.update(arr => arr.map(a => a.id === item.id ? saved : a));
+        return saved;
+      } else {
+        throw new Error('HTTP '+res.status);
+      }
+    } catch {
+      // rollback
+      this._items.update(arr => arr.filter(a => a.id !== item.id));
+      throw new Error('No se pudo guardar en el servidor');
+    }
   }
 
-  update(id: string, data: Omit<RaceTime, 'id'>) {
-    this._items.update((arr: RaceTime[]) => arr.map(i => i.id === id ? { id, ...data } : i));
-    this.persist();
-    this.pushToServer('PUT', { id, ...data }).catch(()=>{});
+  async update(id: string, data: Omit<RaceTime, 'id'>) {
+    const before = this._items();
+    this._items.update(arr => arr.map(i => i.id === id ? { id, ...data } : i));
+    try {
+      const res = await fetch(`${this.serverBase}/race-times/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, ...data }) });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+    } catch {
+      this._items.set(before); // rollback
+      throw new Error('No se pudo actualizar en el servidor');
+    }
   }
 
-  remove(id: string) {
-    this._items.update((arr: RaceTime[]) => arr.filter(i => i.id !== id));
-    this.persist();
-    fetch(`${this.serverBase}/race-times/${id}`, { method: 'DELETE' }).catch(()=>{});
+  async remove(id: string) {
+    const before = this._items();
+    this._items.update(arr => arr.filter(i => i.id !== id));
+    try {
+      const res = await fetch(`${this.serverBase}/race-times/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+    } catch {
+      this._items.set(before); // rollback
+      throw new Error('No se pudo eliminar en el servidor');
+    }
   }
 
   formatTiempo(segundos: number): string {
@@ -74,15 +84,7 @@ export class RaceTimesService {
       const res = await fetch(`${this.serverBase}/race-times`);
       if (!res.ok) return;
       const list = await res.json() as RaceTime[];
-      if (Array.isArray(list) && list.length) {
-        this._items.set(list);
-        this.persist();
-      }
+      this._items.set(Array.isArray(list) ? list : []);
     } catch { /* ignore offline */ } finally { this.syncing = false; }
-  }
-
-  private async pushToServer(method: 'POST'|'PUT', item: RaceTime) {
-    const url = method === 'POST' ? `${this.serverBase}/race-times` : `${this.serverBase}/race-times/${item.id}`;
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item) });
   }
 }

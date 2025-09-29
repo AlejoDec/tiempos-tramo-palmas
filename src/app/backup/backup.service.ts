@@ -10,31 +10,28 @@ export interface BackupPayload {
 export class BackupService {
   status = signal<string>('');
 
-  private collectAll(): BackupPayload {
+  private async collectAll(): Promise<BackupPayload> {
     const data: Record<string, unknown> = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      try {
-        const raw = localStorage.getItem(key);
-        data[key] = raw ? JSON.parse(raw) : null;
-      } catch {
-        data[key] = localStorage.getItem(key);
+    try {
+      const res = await fetch('/api/race-times');
+      if (res.ok) {
+        const list = await res.json();
+        data['app.race.times'] = list;
       }
+    } catch {
+      data['app.race.times'] = [];
     }
-    return {
-      exportedAt: new Date().toISOString(),
-      origin: location.origin,
-      data
-    };
+    return { exportedAt: new Date().toISOString(), origin: location.origin, data };
   }
 
-  exportJson(): string {
-    return JSON.stringify(this.collectAll(), null, 2);
+  async exportJson(): Promise<string> {
+    const payload = await this.collectAll();
+    return JSON.stringify(payload, null, 2);
   }
 
-  downloadJson(filename = 'backup-localstorage.json') {
-    const blob = new Blob([this.exportJson()], { type: 'application/json' });
+  async downloadJson(filename = 'backup-race-times.json') {
+    const json = await this.exportJson();
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -48,11 +45,8 @@ export class BackupService {
   async uploadToServer(endpoint = '/api/import-backup') {
     try {
       this.status.set('Subiendo respaldo...');
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: this.exportJson()
-      });
+      const body = await this.exportJson();
+      const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
       if (!res.ok) throw new Error('Error HTTP ' + res.status);
       const json = await res.json();
       this.status.set('Servidor: ' + (json.message || 'OK'));
