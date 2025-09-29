@@ -1,5 +1,6 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { RaceTimesService } from './race-times.service';
 import { AuthService } from '../auth/auth.service';
@@ -7,7 +8,7 @@ import { AuthService } from '../auth/auth.service';
 @Component({
   selector: 'app-race-times-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe],
+  imports: [CommonModule, RouterLink, DatePipe, FormsModule],
   template: `
   <div class="toolbar">
     <h2>Tiempos de Carrera</h2>
@@ -19,23 +20,31 @@ import { AuthService } from '../auth/auth.service';
       <span class="readonly">Solo lectura (inicia sesión para editar)</span>
     </ng-template>
   </div>
-  <table *ngIf="items().length; else empty">
+  <div class="filters">
+    <input placeholder="Filtrar marca" [(ngModel)]="fMarca" />
+    <input placeholder="Filtrar corredor" [(ngModel)]="fCorredor" />
+    <input placeholder="Filtrar modelo" [(ngModel)]="fModelo" />
+    <button (click)="limpiarFiltros()" type="button">Limpiar</button>
+  </div>
+  <table *ngIf="filtered().length; else empty">
     <thead>
       <tr>
         <th>Corredor</th>
-        <th>Carro</th>
-        <th>Tiempo (s)</th>
+        <th>Marca</th>
+        <th>Modelo</th>
+        <th>Tiempo</th>
         <th>Tramo</th>
         <th>Fecha</th>
         <th *ngIf="loggedIn()">Acciones</th>
       </tr>
     </thead>
     <tbody>
-      @for (t of items(); track t.id) {
+      @for (t of filtered(); track t.id) {
         <tr>
           <td>{{ t.corredor }}</td>
+            <td>{{ t.marca || '-' }}</td>
             <td>{{ t.carro }}</td>
-            <td>{{ t.tiempoSegundos }}</td>
+            <td>{{ formatTiempo(t.tiempoSegundos) }}</td>
             <td>{{ t.tramo }}</td>
             <td>{{ t.fecha | date:'short' }}</td>
             <td *ngIf="loggedIn()">
@@ -65,6 +74,19 @@ export class RaceTimesListComponent {
   private svc = inject(RaceTimesService);
   private auth = inject(AuthService);
   items = computed(() => this.svc.items());
+  fMarca = '';
+  fCorredor = '';
+  fModelo = '';
+  filtered = computed(() => {
+    const marca = this.fMarca.trim().toLowerCase();
+    const corredor = this.fCorredor.trim().toLowerCase();
+    const modelo = this.fModelo.trim().toLowerCase();
+    return this.items()
+      .filter(t => !marca || (t.marca||'').toLowerCase().includes(marca))
+      .filter(t => !corredor || t.corredor.toLowerCase().includes(corredor))
+      .filter(t => !modelo || t.carro.toLowerCase().includes(modelo))
+      .sort((a,b) => (a.marca||'').localeCompare(b.marca||''));
+  });
   loggedIn = computed(() => this.auth.loggedIn());
 
   remove(id: string) {
@@ -72,4 +94,10 @@ export class RaceTimesListComponent {
   }
 
   logout() { this.auth.logout(); }
+
+  limpiarFiltros() {
+    this.fMarca = this.fCorredor = this.fModelo = '';
+  }
+
+  formatTiempo(seg: number) { return this.svc.formatTiempo(seg); }
 }

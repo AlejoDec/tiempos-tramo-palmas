@@ -22,6 +22,10 @@ import { RaceTime } from './race-time.model';
         <input name="carro" required [(ngModel)]="model.carro" />
       </div>
       <div class="row">
+        <label>Marca</label>
+        <input name="marca" required [(ngModel)]="model.marca" />
+      </div>
+      <div class="row">
         <label>Tiempo (segundos)</label>
         <input name="tiempoSegundos" type="number" min="0" required [(ngModel)]="model.tiempoSegundos" />
       </div>
@@ -61,6 +65,7 @@ export class RaceTimeFormComponent {
   model: any = {
     corredor: '',
     carro: '',
+    marca: '',
     tiempoSegundos: 0,
     tramo: '',
     fechaLocal: ''
@@ -77,6 +82,7 @@ export class RaceTimeFormComponent {
           this.model = {
             corredor: item.corredor,
             carro: item.carro,
+            marca: item.marca || '',
             tiempoSegundos: item.tiempoSegundos,
             tramo: item.tramo,
             fechaLocal: this.toLocalInput(item.fecha)
@@ -102,6 +108,7 @@ export class RaceTimeFormComponent {
     const data = {
       corredor: this.model.corredor,
       carro: this.model.carro,
+      marca: this.model.marca || '',
       tiempoSegundos: Number(this.model.tiempoSegundos),
       tramo: this.model.tramo,
       fecha: this.toIso(this.model.fechaLocal)

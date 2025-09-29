@@ -51,4 +51,13 @@ export class RaceTimesService {
     this._items.update((arr: RaceTime[]) => arr.filter(i => i.id !== id));
     this.persist();
   }
+
+  formatTiempo(segundos: number): string {
+    if (isNaN(segundos) || segundos < 0) return '-';
+    const whole = Math.floor(segundos);
+    const ms = Math.round((segundos - whole) * 1000);
+    const m = Math.floor(whole / 60);
+    const s = whole % 60;
+    return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}.${ms.toString().padStart(3,'0')}`;
+  }
 }
