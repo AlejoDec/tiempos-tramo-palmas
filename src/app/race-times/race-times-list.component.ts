@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { RaceTimesService } from './race-times.service';
 import { BackupService } from '../backup/backup.service';
 import { AuthService } from '../auth/auth.service';
@@ -9,7 +9,7 @@ import { AuthService } from '../auth/auth.service';
 @Component({
   selector: 'app-race-times-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule],
   template: `
   <div class="toolbar">
     <h2>Tiempos de Carrera de Palmas - Medellin</h2>
