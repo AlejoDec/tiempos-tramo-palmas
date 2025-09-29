@@ -23,7 +23,6 @@ import { AuthService } from '../auth/auth.service';
       <button type="submit" [disabled]="f.invalid">Entrar</button>
       <p class="error" *ngIf="error()">Credenciales incorrectas</p>
     </form>
-    <p><strong>Demo:</strong> usuario: <code>admin</code> / password: <code>1234</code></p>
   </div>
   `,
   styles: [`

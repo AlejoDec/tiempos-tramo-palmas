@@ -18,7 +18,7 @@ export class AuthService {
 
   login({ username, password }: Credentials): boolean {
     // Credenciales fijas de ejemplo. En un backend real se validaría en el servidor.
-    if (username === 'admin' && password === '1234') {
+    if (username === 'alejodec' && password === 'AlEjO16060300..') {
       localStorage.setItem(this.storageKey, JSON.stringify({ username, ts: Date.now() }));
       this._loggedIn.set(true);
       return true;
