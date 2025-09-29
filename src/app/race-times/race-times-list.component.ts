@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -30,7 +30,7 @@ import { AuthService } from '../auth/auth.service';
     <thead>
       <tr>
         <th>Corredor</th>
-        <th>Marca</th>
+        <th>Marca de carro</th>
         <th>Modelo</th>
         <th>Tiempo</th>
         <th>Tramo</th>
