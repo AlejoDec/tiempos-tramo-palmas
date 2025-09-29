@@ -1,27 +1,30 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { RaceTimesService } from './race-times.service';
+import { BackupService } from '../backup/backup.service';
 import { AuthService } from '../auth/auth.service';
 
 @Component({
   selector: 'app-race-times-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule],
   template: `
   <div class="toolbar">
     <h2>Tiempos de Carrera</h2>
     <div class="actions" *ngIf="loggedIn(); else readOnlyBadge">
       <a routerLink="/times/new">➕ Nuevo</a>
       <button (click)="logout()">Salir</button>
+      <button (click)="exportar()">Exportar JSON</button>
+      <button (click)="subir()">Subir a API</button>
     </div>
     <ng-template #readOnlyBadge>
       <span class="readonly">Solo lectura (inicia sesión para editar)</span>
     </ng-template>
   </div>
   <div class="filters">
-    <input placeholder="Filtrar (marca / corredor / modelo)" [(ngModel)]="filterInput" (keyup.enter)="aplicarFiltro()" />
+    <input placeholder="Filtrar (marca / corredor / modelo / tramo)" [(ngModel)]="filterInput" (keyup.enter)="aplicarFiltro()" />
     <button type="button" (click)="aplicarFiltro()">Aplicar</button>
     <button type="button" (click)="limpiarFiltro()" [disabled]="!appliedFilter() && !filterInput">Limpiar</button>
     <span class="badge" *ngIf="appliedFilter()">Filtro activo: "{{ appliedFilter() }}"</span>
@@ -34,7 +37,7 @@ import { AuthService } from '../auth/auth.service';
         <th>Modelo</th>
         <th>Tiempo</th>
         <th>Tramo</th>
-        <th>Fecha</th>
+        <th> Nota </th>
         <th *ngIf="loggedIn()">Acciones</th>
       </tr>
     </thead>
@@ -46,7 +49,7 @@ import { AuthService } from '../auth/auth.service';
             <td>{{ t.carro }}</td>
             <td>{{ formatTiempo(t.tiempoSegundos) }}</td>
             <td>{{ t.tramo }}</td>
-            <td>{{ t.fecha | date:'short' }}</td>
+            <td> {{ t.nota || '-' }} </td>
             <td *ngIf="loggedIn()">
               <a [routerLink]="['/times', t.id, 'edit']">Editar</a>
               <button (click)="remove(t.id)">Eliminar</button>
@@ -73,6 +76,7 @@ import { AuthService } from '../auth/auth.service';
 export class RaceTimesListComponent {
   private svc = inject(RaceTimesService);
   private auth = inject(AuthService);
+  private backup = inject(BackupService);
   items = computed(() => this.svc.items());
   filterInput = '';
   appliedFilter = signal('');
@@ -103,4 +107,7 @@ export class RaceTimesListComponent {
   }
 
   formatTiempo(seg: number) { return this.svc.formatTiempo(seg); }
+
+  exportar() { this.backup.downloadJson(); }
+  subir() { this.backup.uploadToServer(); }
 }
