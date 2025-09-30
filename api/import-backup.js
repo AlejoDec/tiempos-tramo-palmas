@@ -1,16 +1,5 @@
 // Vercel Serverless Function to import backup
-import { createClient } from 'redis';
-
-const KEY = 'app.race.times';
-
-async function getRedis() {
-  const url = process.env.REDIS_URL;
-  if (!url) throw new Error('REDIS_URL no definido');
-  const client = createClient({ url });
-  client.on('error', err => console.error('[redis] error', err));
-  if (!client.isOpen) await client.connect();
-  return client;
-}
+import { getCollection } from './_mongo.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') { res.setHeader('Allow','POST'); res.status(405).json({ message: 'Método no permitido' }); return; }
@@ -19,10 +8,17 @@ export default async function handler(req, res) {
     if (!payload || typeof payload !== 'object' || !payload.data) {
       res.status(400).json({ message: 'Payload inválido' }); return;
     }
-    const redis = await getRedis();
+    const col = await getCollection();
+    const KEY = 'app.race.times';
     if (payload.data[KEY]) {
       const arr = Array.isArray(payload.data[KEY]) ? payload.data[KEY] : [];
-      await redis.set(KEY, JSON.stringify(arr));
+      // Reemplazar colección completa
+      await col.deleteMany({});
+      if (arr.length) {
+        // Insertar usando _id = id si existe
+        const docs = arr.map(r => ({ _id: r.id || r._id || crypto.randomUUID(), ...r, id: undefined }));
+        await col.insertMany(docs, { ordered: false });
+      }
     }
     res.status(200).json({ message: 'Backup importado' });
   } catch (e) {

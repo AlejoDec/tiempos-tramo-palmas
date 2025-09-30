@@ -1,45 +1,28 @@
 // Vercel Serverless Function for PUT/DELETE race times by id (folder route version)
-import { createClient } from 'redis';
-
-const KEY = 'app.race.times';
-
-async function getRedis() {
-  const url = process.env.REDIS_URL;
-  if (!url) throw new Error('REDIS_URL no definido');
-  const client = createClient({ url });
-  client.on('error', err => console.error('[redis] error', err));
-  if (!client.isOpen) await client.connect();
-  return client;
-}
+import { getCollection, mapDoc } from '../_mongo.js';
 
 export default async function handler(req, res) {
   try {
     const { id } = req.query;
     if (!id) { res.status(400).json({ message: 'Falta id' }); return; }
-    const redis = await getRedis();
-    const raw = await redis.get(KEY);
-    const list = raw ? JSON.parse(raw) : [];
-  const idx = list.findIndex(r => r.id === id);
-  // Para DELETE hacemos la operación idempotente: si no existe, respondemos 200 igualmente
-  // Para PUT seguimos exigiendo que exista
-  if (req.method !== 'DELETE' && idx === -1) { res.status(404).json({ message: 'No encontrado' }); return; }
-
+    const col = await getCollection();
     if (req.method === 'PUT') {
       const body = req.body || {};
-      list[idx] = { ...list[idx], ...body, id };
-      await redis.set(KEY, JSON.stringify(list));
-      res.status(200).json(list[idx]);
+      const { matchedCount } = await col.updateOne({ _id: id }, { $set: body }, { upsert: false });
+      if (matchedCount === 0) { res.status(404).json({ message: 'No encontrado' }); return; }
+      const updated = await col.findOne({ _id: id });
+      res.status(200).json(mapDoc(updated));
       return;
     }
     if (req.method === 'DELETE') {
-      if (idx !== -1) {
-        const filtered = list.filter(r => r.id !== id);
-        await redis.set(KEY, JSON.stringify(filtered));
-        res.status(200).json({ message: 'Eliminado' });
-      } else {
+      const { deletedCount } = await col.deleteOne({ _id: id });
+      if (deletedCount === 0) {
         res.status(200).json({ message: 'Ya no existía (idempotente)' });
+      } else {
+        res.status(200).json({ message: 'Eliminado' });
       }
-      return;    }
+      return;
+    }
     res.setHeader('Allow', 'PUT,DELETE');
     res.status(405).json({ message: 'Método no permitido' });
   } catch (e) {
